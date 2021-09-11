@@ -4,10 +4,14 @@ import io.vertx.core.Vertx;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Set;
 
 public class Main {
+  private static final Logger log = LogManager.getLogger();
+
   public static void main(String[] args) {
     // TODO: should be externally configurable
     final var celebs = Set.of("mason", "Arteezy", "Gunnar");
@@ -26,9 +30,9 @@ public class Main {
 
     vertx.deployVerticle(new ScraperVerticle(pgClient, celebs), h -> {
       if (h.succeeded()) {
-        System.out.println("Scraper verticle deployed successfully with ID " + h.result());
+        log.info("Scraper verticle deployed successfully with ID {}", h.result());
       } else {
-        System.out.println("Something wrong happened " + h.cause());
+        log.error("Something wrong happened!", h.cause());
       }
     });
   }

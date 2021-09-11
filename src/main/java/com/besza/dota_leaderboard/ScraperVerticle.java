@@ -6,9 +6,10 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.codec.BodyCodec;
-import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.SqlClient;
 import io.vertx.sqlclient.Tuple;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -18,6 +19,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ScraperVerticle extends AbstractVerticle {
+
+  private final Logger log = LogManager.getLogger();
+
   private final SqlClient pgClient;
   private final Set<String> players;
 
@@ -55,7 +59,7 @@ public class ScraperVerticle extends AbstractVerticle {
           .stream()
           .map(o -> (JsonObject) o)
           .filter(player -> players.contains(player.getString("name")))
-          .peek(System.out::println)
+          .peek(log::info)
           .map(player -> Tuple.of(timePosted, player))
           .collect(Collectors.toList());
 
@@ -63,18 +67,18 @@ public class ScraperVerticle extends AbstractVerticle {
         pgClient.preparedQuery("INSERT INTO leaderboard (tstz, rank) VALUES ($1, $2)")
           .executeBatch(rankings, res -> {
             if (res.failed()) {
-              System.out.printf("Batch failed: %s%n", res.cause());
+              log.warn("Batch failed", res.cause());
             }
           });
 
         // calculate when to fire next (with a little buffer)
         // TODO: guarantee that the delay is never less than < 1ms, otherwise it won't be scheduled and scraping halts
         final var delayMillis = (nextScheduledPostTime - serverTime + 10L) * 1000L;
-        System.out.printf("Next scrape scheduled for %s%n", LocalDateTime.now().plus(delayMillis, ChronoUnit.MILLIS));
+        log.info("Next scrape scheduled for {}", LocalDateTime.now().plus(delayMillis, ChronoUnit.MILLIS));
         vertx.setTimer(delayMillis, handler -> go(webClient, pgClient, vertx));
       })
       .onFailure(err -> {
-        System.out.printf("Something went wrong: %s%n", err.getMessage());
+        log.error("Something went wrong: {}", err.getMessage());
         err.printStackTrace();
       });
   }
