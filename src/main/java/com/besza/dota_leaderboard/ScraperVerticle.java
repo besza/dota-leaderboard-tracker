@@ -64,6 +64,7 @@ public class ScraperVerticle extends AbstractVerticle {
           .collect(Collectors.toList());
 
         // persist our newly fetched rankings
+        // TODO: compare existing max(tstz) to the timePosted such that we do not insert stuff that we have already seen
         pgClient.preparedQuery("INSERT INTO leaderboard (tstz, rank) VALUES ($1, $2)")
           .executeBatch(rankings, res -> {
             if (res.failed()) {

@@ -1,5 +1,7 @@
 package com.besza.dota_leaderboard;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
@@ -28,12 +30,15 @@ public class Main {
     // pooled client operations are pipelined
     final var pgClient = PgPool.client(vertx, connectOptions, poolOptions);
 
-    vertx.deployVerticle(new ScraperVerticle(pgClient, celebs), h -> {
+    Handler<AsyncResult<String>> deploymentHandler = h -> {
       if (h.succeeded()) {
-        log.info("Scraper verticle deployed successfully with ID {}", h.result());
+        log.info("Verticle deployed successfully with ID {}", h.result());
       } else {
-        log.error("Something wrong happened!", h.cause());
+        log.error("Verticle failed to be deployed", h.cause());
       }
-    });
+    };
+
+    vertx.deployVerticle(new ScraperVerticle(pgClient, celebs), deploymentHandler);
+    vertx.deployVerticle(new ServerVerticle(pgClient), deploymentHandler);
   }
 }

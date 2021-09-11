@@ -9,7 +9,7 @@
     <!-- Async Loggers will auto-flush in batches, so switch off immediateFlush. -->
     <RandomAccessFile name="RandomAccessFile" fileName="async.log" immediateFlush="false" append="true">
       <PatternLayout>
-        <Pattern>%d{ISO8601} %p %c{1.} [%t] %m %ex%n</Pattern>
+        <Pattern>%d{ISO8601} %p %c{1.} [%t] %m %ex{full}%n</Pattern>
       </PatternLayout>
     </RandomAccessFile>
   </Appenders>
