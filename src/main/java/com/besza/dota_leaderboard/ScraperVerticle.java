@@ -1,12 +1,13 @@
 package com.besza.dota_leaderboard;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.codec.BodyCodec;
-import io.vertx.sqlclient.SqlClient;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,13 +21,13 @@ import java.util.stream.Collectors;
 
 public class ScraperVerticle extends AbstractVerticle {
 
-  private final Logger log = LogManager.getLogger();
+  private final Logger log = LogManager.getLogger(ScraperVerticle.class);
 
-  private final SqlClient pgClient;
+  private final Pool pool;
   private final Set<String> players;
 
-  public ScraperVerticle(SqlClient pgClient, Set<String> players) {
-    this.pgClient = pgClient;
+  public ScraperVerticle(Pool pool, Set<String> players) {
+    this.pool = pool;
     this.players = players;
   }
 
@@ -36,10 +37,10 @@ public class ScraperVerticle extends AbstractVerticle {
     final var webClient = WebClient.create(vertx);
 
     startPromise.complete();
-    go(webClient, pgClient, vertx);
+    go(webClient, pool, vertx);
   }
 
-  void go(WebClient webClient, SqlClient pgClient, Vertx vertx) {
+  void go(WebClient webClient, Pool pool, Vertx vertx) {
     webClient
       .get(80, "www.dota2.com", "/webapi/ILeaderboard/GetDivisionLeaderboard/v0001")
       .addQueryParam("division", "americas")
@@ -51,9 +52,10 @@ public class ScraperVerticle extends AbstractVerticle {
         final var nextScheduledPostTime = h.body().getLong("next_scheduled_post_time");
         final var serverTime = h.body().getLong("server_time");
         final var leaderboard = h.body().getJsonArray("leaderboard");
-        // TODO: how to properly create an OffsetDateTime of an epoch second?
+        final var timePostedEpoch = h.body().getLong("time_posted");
+        // TODO: how to properly create an OffsetDateTime from an epoch second?
         final var timePosted = OffsetDateTime.of(
-          LocalDateTime.ofEpochSecond(h.body().getLong("time_posted"), 0, ZoneOffset.UTC),
+          LocalDateTime.ofEpochSecond(timePostedEpoch, 0, ZoneOffset.UTC),
           ZoneOffset.UTC);
         final var rankings = leaderboard
           .stream()
@@ -63,20 +65,28 @@ public class ScraperVerticle extends AbstractVerticle {
           .map(player -> Tuple.of(timePosted, player))
           .collect(Collectors.toList());
 
-        // persist our newly fetched rankings
-        // TODO: compare existing max(tstz) to the timePosted such that we do not insert stuff that we have already seen
-        pgClient.preparedQuery("INSERT INTO leaderboard (tstz, rank) VALUES ($1, $2)")
-          .executeBatch(rankings, res -> {
-            if (res.failed()) {
-              log.warn("Batch failed", res.cause());
-            }
-          });
+        // pool operations are not pipelined (sequential)
+        pool.withConnection(connection ->
+          connection
+            .query("SELECT MAX(tstz) FROM leaderboard")
+            .execute()
+            .compose(rows -> {
+              if (rows.iterator().next().getValue(0) != null
+                && rows.iterator().next().getOffsetDateTime(0).toEpochSecond() >= timePostedEpoch) {
+                log.warn("Refused to save the same batch twice");
+                return Future.failedFuture("same batch");
+              } else {
+                // DB was either empty or we received a new batch
+                return connection.preparedQuery("INSERT INTO leaderboard(tstz, rank) VALUES ($1, $2)")
+                  .executeBatch(rankings);
+              }
+            }));
 
         // calculate when to fire next (with a little buffer)
         // TODO: guarantee that the delay is never less than < 1ms, otherwise it won't be scheduled and scraping halts
-        final var delayMillis = (nextScheduledPostTime - serverTime + 10L) * 1000L;
+        final var delayMillis = (Math.abs(nextScheduledPostTime - serverTime) + 10L) * 1000L;
         log.info("Next scrape scheduled for {}", LocalDateTime.now().plus(delayMillis, ChronoUnit.MILLIS));
-        vertx.setTimer(delayMillis, handler -> go(webClient, pgClient, vertx));
+        vertx.setTimer(delayMillis, handler -> go(webClient, pool, vertx));
       })
       .onFailure(err -> {
         log.error("Something went wrong: {}", err.getMessage());

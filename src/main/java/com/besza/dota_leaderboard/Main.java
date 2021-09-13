@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Set;
 
 public class Main {
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger log = LogManager.getLogger(Main.class);
 
   public static void main(String[] args) {
     // TODO: should be externally configurable
@@ -27,8 +27,7 @@ public class Main {
 
     final var poolOptions = new PoolOptions().setMaxSize(5);
     final var vertx = Vertx.vertx();
-    // pooled client operations are pipelined
-    final var pgClient = PgPool.client(vertx, connectOptions, poolOptions);
+    final var pgPool = PgPool.pool(vertx, connectOptions, poolOptions);
 
     Handler<AsyncResult<String>> deploymentHandler = h -> {
       if (h.succeeded()) {
@@ -38,7 +37,7 @@ public class Main {
       }
     };
 
-    vertx.deployVerticle(new ScraperVerticle(pgClient, celebs), deploymentHandler);
-    vertx.deployVerticle(new ServerVerticle(pgClient), deploymentHandler);
+    vertx.deployVerticle(new ScraperVerticle(pgPool, celebs), deploymentHandler);
+    vertx.deployVerticle(new ServerVerticle(pgPool), deploymentHandler);
   }
 }
