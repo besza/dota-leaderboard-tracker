@@ -1,26 +1,25 @@
-fetch("http://localhost:8080/leaderboard")
+fetch("http://ec2-3-15-175-37.us-east-2.compute.amazonaws.com:8085/leaderboard")
   .then(resp => resp.json())
   .then(leaderboard => {
+    // thanks Arthur, https://stackoverflow.com/questions/14446511/most-efficient-method-to-groupby-on-an-array-of-objects
+    const groupedMap = leaderboard.reduce(
+        (entryMap, e) => entryMap.set(e.name, [...entryMap.get(e.name)||[], e]),
+        new Map()
+    );
+    const colors = ["#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#b15928"]
+    const playerDatasets = [];
+    for (const [key, val] of groupedMap.entries()) {
+        playerDatasets.push({label: key,
+          fill: false,
+          borderColor: colors[key.length % colors.length],
+          backgroundColor: colors[key.length % colors.length] + "a0", // add some opacity
+          cubicInterpolationMode: 'monotone',
+          tension: 0.4,
+          data: val.map(e => e.rank)});
+    }
     const data = {
       labels: [...Array(leaderboard.length).keys()],
-      datasets: [{
-        label: 'Masao',
-        backgroundColor: 'rgb(255, 0, 0)',
-        borderColor: 'rgb(255, 0, 0)',
-        data: leaderboard.filter(r => r.name === 'mason').map(e => e.rank),
-      },
-      {
-        label: 'Arteezy',
-        backgroundColor: 'rgb(0, 255, 0)',
-        borderColor: 'rgb(0, 255, 0)',
-        data: leaderboard.filter(r => r.name === 'Arteezy').map(e => e.rank),
-      },
-      {
-       label: 'Gunnar',
-       backgroundColor: 'rgb(0, 0, 255)',
-       borderColor: 'rgb(0, 0, 255)',
-       data: leaderboard.filter(r => r.name === 'Gunnar').map(e => e.rank),
-       }]
+      datasets: playerDatasets
     };
     const config = {
       type: 'line',
@@ -30,14 +29,31 @@ fetch("http://localhost:8080/leaderboard")
           y: {
             reverse: true,
             type: 'linear',
-            min: 1
+            min: 1,
+            title: {
+              display: true,
+              text: 'Rank'
+            }
           },
           x: {
-            reverse: true
+            reverse: true,
+            title: {
+              display: true,
+              text: 'Scrape event number (the smaller the newer)'
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: 'Dota 2 Leaderboard Tracker'
+          },
+          legend: {
+            position: 'bottom'
           }
         }
       }
     };
-    var myChart = new Chart(document.getElementById('myChart'), config);
+    let myChart = new Chart(document.getElementById('myChart'), config);
   });
 

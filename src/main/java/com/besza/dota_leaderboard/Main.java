@@ -16,14 +16,9 @@ public class Main {
 
   public static void main(String[] args) {
     // TODO: should be externally configurable
-    final var celebs = Set.of("mason", "Arteezy", "Gunnar");
+    final var celebs = Set.of("mason", "Arteezy", "Gunnar", "kitrak", "scofield", "slad1n", "ixmike88", "Bloody Nine", "Monkeys-forever");
 
-    final var connectOptions = new PgConnectOptions()
-      .setPort(5432)
-      .setHost("localhost")
-      .setDatabase("postgres")
-      .setUser("postgres")
-      .setPassword("rooster");
+    final var connectOptions = PgConnectOptions.fromEnv();
 
     final var poolOptions = new PoolOptions().setMaxSize(5);
     final var vertx = Vertx.vertx();

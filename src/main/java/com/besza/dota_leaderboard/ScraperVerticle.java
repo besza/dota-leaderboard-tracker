@@ -1,7 +1,6 @@
 package com.besza.dota_leaderboard;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -65,22 +64,8 @@ public class ScraperVerticle extends AbstractVerticle {
           .map(player -> Tuple.of(timePosted, player))
           .collect(Collectors.toList());
 
-        // pool operations are not pipelined (sequential)
-        pool.withConnection(connection ->
-          connection
-            .query("SELECT MAX(tstz) FROM leaderboard")
-            .execute()
-            .compose(rows -> {
-              if (rows.iterator().next().getValue(0) != null
-                && rows.iterator().next().getOffsetDateTime(0).toEpochSecond() >= timePostedEpoch) {
-                log.warn("Refused to save the same batch twice");
-                return Future.failedFuture("same batch");
-              } else {
-                // DB was either empty or we received a new batch
-                return connection.preparedQuery("INSERT INTO leaderboard(tstz, rank) VALUES ($1, $2)")
-                  .executeBatch(rankings);
-              }
-            }));
+        pool.preparedQuery("INSERT INTO leaderboard(tstz, rank) VALUES ($1, $2) ON CONFLICT DO NOTHING")
+          .executeBatch(rankings);
 
         // calculate when to fire next (with a little buffer)
         // TODO: guarantee that the delay is never less than < 1ms, otherwise it won't be scheduled and scraping halts

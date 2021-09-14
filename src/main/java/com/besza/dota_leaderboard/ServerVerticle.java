@@ -30,7 +30,7 @@ public class ServerVerticle extends AbstractVerticle {
     router.get("/leaderboard").respond(ctx -> fetchLeaderboard());
     router.route("/*").handler(StaticHandler.create().setIncludeHidden(false));
 
-    server.requestHandler(router).listen(8080)
+    server.requestHandler(router).listen(8085)
       .onSuccess(h -> startPromise.complete())
       .onFailure(h -> startPromise.fail("Failed to start HttpServer!"));
   }
