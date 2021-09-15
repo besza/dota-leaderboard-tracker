@@ -8,7 +8,11 @@ fetch("http://ec2-3-15-175-37.us-east-2.compute.amazonaws.com:8085/leaderboard")
     );
     const colors = ["#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#b15928"]
     const playerDatasets = [];
+    let maxLabelIndex = 0;
     for (const [key, val] of groupedMap.entries()) {
+        if (val.length > maxLabelIndex) {
+          maxLabelIndex = val.length;
+        }
         playerDatasets.push({label: key,
           fill: false,
           borderColor: colors[key.length % colors.length],
@@ -18,7 +22,7 @@ fetch("http://ec2-3-15-175-37.us-east-2.compute.amazonaws.com:8085/leaderboard")
           data: val.map(e => e.rank)});
     }
     const data = {
-      labels: [...Array(leaderboard.length).keys()],
+      labels: [...Array(maxLabelIndex).keys()],
       datasets: playerDatasets
     };
     const config = {
