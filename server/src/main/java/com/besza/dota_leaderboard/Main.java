@@ -9,15 +9,10 @@ import io.vertx.sqlclient.PoolOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Set;
-
 public class Main {
   private static final Logger log = LogManager.getLogger(Main.class);
 
   public static void main(String[] args) {
-    // TODO: should be externally configurable
-    final var celebs = Set.of("mason", "Arteezy", "Gunnar", "kitrak", "scofield", "slad1n", "ixmike88", "Bloody Nine", "Monkeys-forever");
-
     final var connectOptions = PgConnectOptions.fromEnv();
 
     final var poolOptions = new PoolOptions().setMaxSize(5);
@@ -32,7 +27,6 @@ public class Main {
       }
     };
 
-    vertx.deployVerticle(new ScraperVerticle(pgPool, celebs), deploymentHandler);
     vertx.deployVerticle(new ServerVerticle(pgPool), deploymentHandler);
   }
 }

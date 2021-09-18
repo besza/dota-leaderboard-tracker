@@ -3,6 +3,7 @@ package com.besza.dota_leaderboard;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.StaticHandler;
@@ -25,7 +26,8 @@ public class ServerVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) {
-    var server = vertx.createHttpServer();
+    var options = new HttpServerOptions().setCompressionSupported(true);
+    var server = vertx.createHttpServer(options);
     var router = Router.router(vertx);
     router.get("/leaderboard").respond(ctx -> fetchLeaderboard());
     router.route("/*").handler(StaticHandler.create().setIncludeHidden(false));

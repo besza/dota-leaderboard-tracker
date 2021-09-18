@@ -1,4 +1,4 @@
-fetch("http://ec2-3-15-175-37.us-east-2.compute.amazonaws.com:8085/leaderboard")
+fetch("http://ec2-18-118-161-26.us-east-2.compute.amazonaws.com:8085/leaderboard")
   .then(resp => resp.json())
   .then(leaderboard => {
     // thanks Arthur, https://stackoverflow.com/questions/14446511/most-efficient-method-to-groupby-on-an-array-of-objects
