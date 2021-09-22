@@ -11,6 +11,7 @@ import io.vertx.sqlclient.Pool;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,7 +31,7 @@ public class ServerVerticle extends AbstractVerticle {
     var server = vertx.createHttpServer(options);
     var router = Router.router(vertx);
     router.get("/leaderboard").respond(ctx -> fetchLeaderboard());
-    router.route("/*").handler(StaticHandler.create().setIncludeHidden(false));
+    router.route("/*").handler(StaticHandler.create().setCachingEnabled(false).setIncludeHidden(false));
 
     server.requestHandler(router).listen(8085)
       .onSuccess(h -> startPromise.complete())
@@ -38,8 +39,15 @@ public class ServerVerticle extends AbstractVerticle {
   }
 
   private Future<List<JsonObject>> fetchLeaderboard() {
-    return pool.query("SELECT rank FROM leaderboard ORDER BY tstz DESC")
-      .collecting(Collectors.mapping(row -> row.getJsonObject(0), Collectors.toList()))
+    return pool.query("SELECT rank, tstz FROM leaderboard ORDER BY tstz DESC")
+      .collecting(Collectors.mapping(row -> {
+        var rank = row.getJsonObject(0);
+        // since we already have a JsonObject, we are just going to throw in the ISO formatted timestamp
+        var formatter = DateTimeFormatter.ISO_DATE_TIME;
+        var timestamp = row.getOffsetDateTime(1).format(formatter);
+        rank.put("recordedAt", timestamp);
+        return rank;
+      }, Collectors.toList()))
       .execute()
       .onFailure(err -> log.error("Failed to query the database", err))
       .compose(result -> Future.succeededFuture(result.value()));
