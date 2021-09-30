@@ -31,7 +31,7 @@ public class ServerVerticle extends AbstractVerticle {
     var server = vertx.createHttpServer(options);
     var router = Router.router(vertx);
     router.get("/leaderboard").respond(ctx -> fetchLeaderboard());
-    router.route("/*").handler(StaticHandler.create().setCachingEnabled(false).setIncludeHidden(false));
+    router.route("/*").handler(StaticHandler.create().setMaxAgeSeconds(3600L).setIncludeHidden(false));
 
     server.requestHandler(router).listen(8085)
       .onSuccess(h -> startPromise.complete())
@@ -39,12 +39,15 @@ public class ServerVerticle extends AbstractVerticle {
   }
 
   private Future<List<JsonObject>> fetchLeaderboard() {
-    return pool.query("SELECT rank, tstz FROM leaderboard ORDER BY tstz DESC")
+    return pool.query("""
+          SELECT rank, tstz
+          FROM leaderboard
+          WHERE tstz >= date_trunc('day', now()) - interval '21 days'
+          ORDER BY tstz DESC""")
       .collecting(Collectors.mapping(row -> {
         var rank = row.getJsonObject(0);
         // since we already have a JsonObject, we are just going to throw in the ISO formatted timestamp
-        var formatter = DateTimeFormatter.ISO_DATE_TIME;
-        var timestamp = row.getOffsetDateTime(1).format(formatter);
+        var timestamp = row.getOffsetDateTime(1).format(DateTimeFormatter.ISO_DATE_TIME);
         rank.put("recordedAt", timestamp);
         return rank;
       }, Collectors.toList()))

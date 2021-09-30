@@ -1,4 +1,4 @@
-fetch("http://ec2-18-219-118-171.us-east-2.compute.amazonaws.com:8085/leaderboard")
+fetch("https://leaderboard.besza.net/leaderboard")
   .then(resp => resp.json())
   .then(leaderboard => {
     // thanks Arthur, https://stackoverflow.com/questions/14446511/most-efficient-method-to-groupby-on-an-array-of-objects
@@ -13,8 +13,7 @@ fetch("http://ec2-18-219-118-171.us-east-2.compute.amazonaws.com:8085/leaderboar
           fill: false,
           borderColor: colors[key.length % colors.length],
           backgroundColor: colors[key.length % colors.length] + "a0", // add some opacity
-          cubicInterpolationMode: 'monotone',
-          tension: 0.4,
+          normalized: true, // since we provide unique and sorted indices
           data: val.map(e => {
             let foo = {x: e.recordedAt, y: e.rank}
             return foo
@@ -25,6 +24,12 @@ fetch("http://ec2-18-219-118-171.us-east-2.compute.amazonaws.com:8085/leaderboar
       type: 'line',
       data: { datasets: playerDatasets },
       options: {
+        animation: false,
+        elements: {
+          point: {
+            radius: 0
+          }
+        },
         scales: {
           y: {
             reverse: true,
