@@ -32,11 +32,14 @@ public class ScraperVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) {
-    // TODO: close these resources
-    final var webClient = WebClient.create(vertx);
-
+    var webClient = WebClient.create(vertx);
     startPromise.complete();
     go(webClient, pool, vertx);
+  }
+
+  @Override
+  public void stop(Promise<Void> stopPromise) {
+    pool.close().onSuccess(h -> stopPromise.complete());
   }
 
   void go(WebClient webClient, Pool pool, Vertx vertx) {
