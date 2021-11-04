@@ -37,11 +37,6 @@ public class ScraperVerticle extends AbstractVerticle {
     go(webClient, pool, vertx);
   }
 
-  @Override
-  public void stop(Promise<Void> stopPromise) {
-    pool.close().onSuccess(h -> stopPromise.complete());
-  }
-
   void go(WebClient webClient, Pool pool, Vertx vertx) {
     webClient
       .get(80, "www.dota2.com", "/webapi/ILeaderboard/GetDivisionLeaderboard/v0001")
