@@ -39,7 +39,7 @@ public class Main2 {
       .setConfig(new JsonObject().put("path", "players.json"));
 
     var retrieverOptions = new ConfigRetrieverOptions()
-      .setScanPeriod(60_000L) // 60 sec
+      .setScanPeriod(60_000L) // every minute
       .addStore(playerStore);
 
     var configRetriever = ConfigRetriever.create(vertx, retrieverOptions);
