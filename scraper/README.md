@@ -8,6 +8,7 @@ docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:13-alpine
 Create the schema,
 ```sql
 create table leaderboard (
+  id serial primary key,
   tstz timestamptz not null,
   "rank" jsonb not null
 );
